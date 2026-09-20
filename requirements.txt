@@ -1,0 +1,10 @@
+# 运行时依赖：无。
+#
+# 本程序刻意只使用 Python 标准库（http.server / urllib / sqlite3 / struct），
+# 这样打包成 exe 时体积最小、也最不容易出现"隐藏导入"类的打包错误。
+#
+# 需要 Python 3.10 及以上。
+#
+# 打包（可选，仅构建 exe 时需要）：
+#   pip install pyinstaller
+#   见 build.ps1

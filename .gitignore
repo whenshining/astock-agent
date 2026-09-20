@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+_mei_tmp/
+
+# 本地数据（数据库、配置、日志）
+data/
+_e2e/
+_shots/
+发布/
+*.db
+*.db-wal
+*.db-shm
+.bench*.db
+*.log
+
+# 构建与演示产物（体积大，不进仓库）
+*.exe
+*.zip
+*.mp4
+_mei_tmp*/
+.pdf-profile/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp

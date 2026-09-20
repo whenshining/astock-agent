@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股智能选股助手</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">A</div>
+      <div class="brand-text">
+        <div class="brand-title">智能选股助手</div>
+        <div class="brand-sub">本地日线 · DeepSeek</div>
+      </div>
+    </div>
+
+    <button class="btn-new" id="btn-new-session">
+      <span class="plus">+</span> 新建对话
+    </button>
+
+    <div class="sidebar-section">
+      <div class="section-label">历史对话</div>
+      <div class="session-list" id="session-list">
+        <div class="empty-hint">还没有对话</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <!-- 用量与余额（左下角） -->
+      <button class="usage-card" id="usage-card" title="点击查看用量明细">
+        <div class="usage-line">
+          <span class="usage-label">余额</span>
+          <span class="usage-value" id="usage-balance">—</span>
+        </div>
+        <div class="usage-line">
+          <span class="usage-label">今日</span>
+          <span class="usage-value dim" id="usage-today">—</span>
+        </div>
+      </button>
+
+      <button class="foot-btn" id="btn-watchlist">
+        <span class="ico">⭐</span> 自选股
+        <span class="badge" id="watchlist-count">0</span>
+      </button>
+      <button class="foot-btn" id="btn-strategies">
+        <span class="ico">⚡</span> 自选策略
+        <span class="badge" id="strategy-count">0</span>
+      </button>
+      <button class="foot-btn" id="btn-kb">
+        <span class="ico">📚</span> 知识库
+        <span class="badge" id="kb-count">0</span>
+      </button>
+      <button class="foot-btn" id="btn-memories">
+        <span class="ico">🧠</span> 长期记忆
+        <span class="badge" id="memory-count">0</span>
+      </button>
+      <button class="foot-btn" id="btn-settings">
+        <span class="ico">⚙</span> 设置
+      </button>
+      <button class="foot-btn danger" id="btn-quit">
+        <span class="ico">⏻</span> 退出程序
+      </button>
+    </div>
+  </aside>
+
+  <!-- 主区域 -->
+  <main class="main">
+    <header class="topbar">
+      <div class="status" id="data-status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">正在检查数据…</span>
+      </div>
+      <div class="topbar-actions">
+        <div class="overview" id="overview"></div>
+        <button class="btn btn-ghost" id="btn-refresh">刷新数据</button>
+      </div>
+    </header>
+
+    <div class="scan-bar" id="scan-bar" hidden>
+      <div class="scan-progress"><div class="scan-fill" id="scan-fill"></div></div>
+      <div class="scan-text" id="scan-text">正在扫描本地日线数据…</div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-logo">A</div>
+        <h1>今天想找什么样的股票？</h1>
+        <p class="welcome-sub">用大白话描述你的想法，我来翻译成筛选条件并跑一遍全市场（约 5200 只）。</p>
+        <div class="suggestions">
+          <button class="suggestion" data-q="帮我找今天放量上涨、量比大于2、涨幅在3%到7%之间的股票">今天放量上涨、量比&gt;2、涨幅 3%~7%</button>
+          <button class="suggestion" data-q="找均线多头排列并且创60日新高的股票，按涨幅排序">均线多头 + 创60日新高</button>
+          <button class="suggestion" data-q="找低价股，10元以下，最近连续上涨3天以上">10 元以下 + 连涨 3 天以上</button>
+          <button class="suggestion" data-q="今天市场整体怎么样？涨跌家数、涨停板数量是多少？">今天市场整体怎么样？</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <textarea id="input" rows="1" placeholder="描述你的选股想法，例如：找今天放量突破、量比大于 2 的股票…"></textarea>
+        <button class="btn-send" id="btn-send" title="发送 (Enter)">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 20.5v-17L21 12 3 20.5zm2-3L16.5 12 5 6.5v4l8 1.5-8 1.5v4z"/></svg>
+        </button>
+      </div>
+      <div class="composer-note">数据为本地通达信日线，仅供选股研究，不构成投资建议</div>
+    </div>
+  </main>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal" id="settings-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>设置</h2>
+      <button class="modal-close" data-close="settings-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">DeepSeek API Key</span>
+        <input type="password" id="cfg-api-key" placeholder="sk-...">
+        <span class="field-hint" id="api-key-hint">用于对话选股。获取地址：platform.deepseek.com</span>
+      </label>
+      <label class="field">
+        <span class="field-label">通达信 vipdoc 目录</span>
+        <input type="text" id="cfg-vipdoc" placeholder="留空则自动探测，例如 D:\new_tdx\vipdoc">
+        <span class="field-hint" id="vipdoc-hint">程序会自动在各磁盘常见位置查找，通常不用手动填</span>
+      </label>
+      <label class="field">
+        <span class="field-label">模型</span>
+        <select id="cfg-model"></select>
+        <span class="field-hint" id="model-hint"></span>
+      </label>
+      <div class="model-detail" id="model-detail"></div>
+      <label class="field" id="thinking-effort-field">
+        <span class="field-label">思考强度</span>
+        <select id="cfg-thinking-effort"></select>
+        <span class="field-hint">简单问题用「低」更快更省，复杂分析用「最高」更稳。仅开启思考模式时生效。</span>
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" id="cfg-thinking">
+        <span>开启思考模式（模型先推理再作答，质量更好但更慢）</span>
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" id="cfg-memory">
+        <span>开启跨会话长期记忆（自动记住你的选股偏好）</span>
+      </label>
+      <div class="field-row">
+        <button class="btn btn-primary" id="btn-save-config">保存</button>
+        <button class="btn btn-ghost" id="btn-verify">测试连接</button>
+        <span class="verify-result" id="verify-result"></span>
+      </div>
+      <div class="data-dir">
+        <span class="ver" id="cfg-version"></span>
+        数据目录：<code id="cfg-data-dir"></code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 记忆弹窗 -->
+<div class="modal" id="memories-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>长期记忆</h2>
+      <button class="modal-close" data-close="memories-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">这些内容会跨对话保留，并注入到每次对话的上下文中。可以手动添加，也可以让助手自动积累。</p>
+      <div class="field-row">
+        <input type="text" id="new-memory" placeholder="例如：我偏好 20 元以下的股票">
+        <button class="btn btn-primary" id="btn-add-memory">添加</button>
+      </div>
+      <div class="memory-list" id="memory-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 回测弹窗 -->
+<div class="modal" id="backtest-modal" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2 id="bt-title">策略回测</h2>
+      <button class="modal-close" data-close="backtest-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc" id="bt-desc"></p>
+
+      <!-- 配置 -->
+      <div id="bt-config">
+        <div class="field-row" style="margin-bottom:14px;align-items:flex-end">
+          <label class="field" style="margin:0;flex:1">
+            <span class="field-label">回测区间</span>
+            <select id="bt-range"></select>
+          </label>
+          <label class="field" style="margin:0;flex:1">
+            <span class="field-label">初始资金（元）</span>
+            <input type="number" id="bt-capital" value="100000" step="10000">
+          </label>
+        </div>
+
+        <div class="field-label" style="margin-bottom:8px">交易计划（决定什么时候卖）</div>
+        <div class="bt-grid" id="bt-plan"></div>
+
+        <div class="field-label" style="margin:14px 0 8px">条件卖出（除了止盈止损，还能按形态卖，或自己写条件）</div>
+        <div id="bt-exits"></div>
+        <div class="bt-exit-add">
+          <select id="bt-exit-new"></select>
+          <span id="bt-exit-params"></span>
+          <button class="btn btn-ghost" id="btn-bt-add-exit">添加条件</button>
+        </div>
+        <div class="bt-expr-help" id="bt-expr-help" hidden></div>
+
+        <div class="bt-costs" id="bt-costs"></div>
+
+        <div class="field-row" style="margin-top:16px">
+          <button class="btn btn-primary" id="btn-bt-run">开始回测</button>
+          <button class="btn btn-ghost" id="btn-bt-sweep">参数扫描</button>
+          <button class="btn btn-ghost" id="btn-bt-wf">样本外验证</button>
+          <button class="btn btn-ghost" style="margin-left:auto" data-bt-back="list">返回策略列表</button>
+          <span class="kb-hint" id="bt-hint"></span>
+        </div>
+        <div class="bt-costs" style="margin-top:10px;color:var(--text-dim)">
+          <b>样本外验证</b>：把区间切成几段，前一段调参、后一段拿没见过的数据检验。
+          样本内赚钱、样本外亏钱 = 过拟合，不能上实盘。
+        </div>
+      </div>
+
+      <!-- 扫描网格 -->
+      <div id="bt-grid-config" hidden>
+        <div class="field-label" style="margin-bottom:8px">选择要对比的参数取值（可多选）</div>
+        <div class="bt-sweep-grid" id="bt-sweep-fields"></div>
+        <div class="field-row" style="margin-top:14px">
+          <button class="btn btn-primary" id="btn-bt-sweep-run">开始扫描</button>
+          <button class="btn btn-ghost" id="btn-bt-sweep-cancel">返回</button>
+          <span class="kb-hint">买入信号只扫一次、多组参数共用，所以比跑多次回测快得多</span>
+        </div>
+      </div>
+
+      <!-- 进度 -->
+      <div id="bt-progress" hidden>
+        <div class="scan-progress" style="margin-bottom:8px"><div class="scan-fill" id="bt-fill"></div></div>
+        <div class="kb-stats" id="bt-progress-text">准备中…</div>
+      </div>
+
+      <!-- 结果 -->
+      <div id="bt-result" hidden>
+        <div class="bt-toolbar" id="bt-toolbar-single"></div>
+        <div id="bt-credibility"></div>
+        <div class="bt-metrics" id="bt-metrics"></div>
+        <div id="bt-benchmark"></div>
+        <div id="bt-yearly"></div>
+        <div class="bt-chart-title">净值曲线</div>
+        <canvas id="bt-equity" width="900" height="230"></canvas>
+        <div class="bt-chart-title" style="margin-top:18px" id="bt-trades-title">逐笔交易</div>
+        <div id="bt-trades"></div>
+      </div>
+
+      <!-- 扫描结果 -->
+      <div id="bt-sweep-result" hidden></div>
+
+      <!-- 样本外验证结果 -->
+      <div id="bt-wf-result" hidden></div>
+    </div>
+  </div>
+</div>
+
+<!-- 自选股弹窗 -->
+<div class="modal" id="watchlist-modal" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2>通达信自选股</h2>
+      <button class="modal-close" data-close="watchlist-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc" id="watchlist-desc">
+        读取你在通达信里的「自选股」（<strong>只读</strong>，不会修改你的通达信）。
+        在对话里可以直接说「在我自选股里找量比大于 2 的」。
+        <br>
+        <span class="wl-note">数据来自 <code>T0002\blocknew\ZXG.blk</code>。
+        在通达信里改了自选股后，点「刷新自选股」就能看到最新的。</span>
+      </p>
+      <div class="field-row" style="margin-bottom:12px">
+        <button class="btn btn-ghost" id="btn-watchlist-refresh">刷新自选股</button>
+        <span class="kb-hint" id="watchlist-updated"></span>
+      </div>
+      <div id="watchlist-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 自选策略弹窗 -->
+<div class="modal" id="strategy-modal" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2>自选策略</h2>
+      <button class="modal-close" data-close="strategy-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        把常用的选股条件存成策略，之后在对话里直接说「用我的XX策略选股」就行。
+        <br>也可以让助手帮你把商定好的条件总结成策略保存进来。
+      </p>
+
+      <div class="field-row" style="margin-bottom:12px">
+        <input type="text" id="strategy-search" placeholder="搜索策略（名称、描述或条件都能搜）">
+        <button class="btn btn-ghost" id="btn-strategy-search">搜索</button>
+        <button class="btn btn-primary" id="btn-strategy-new">新建策略</button>
+      </div>
+
+      <div class="kb-stats" id="strategy-stats"></div>
+      <div class="kb-list" id="strategy-list"></div>
+      <div id="strategy-run-result"></div>
+
+      <!-- 新建 / 编辑表单 -->
+      <div id="strategy-form" hidden>
+        <div class="form-sep"></div>
+        <h3 class="form-title" id="strategy-form-title">新建策略</h3>
+        <div class="field-row">
+          <label class="field" style="flex:1;margin-bottom:0">
+            <span class="field-label">策略名称</span>
+            <input type="text" id="strategy-name" maxlength="40" placeholder="例如：放量上涨">
+          </label>
+          <label class="field" style="flex:2;margin-bottom:0">
+            <span class="field-label">描述（可选）</span>
+            <input type="text" id="strategy-desc" maxlength="300" placeholder="一句话说明选股逻辑">
+          </label>
+        </div>
+        <div class="field-label" style="margin:14px 0 8px">筛选条件（留空的条件不生效）</div>
+        <div class="strategy-params" id="strategy-params"></div>
+        <div class="field-row" style="margin-top:16px">
+          <button class="btn btn-primary" id="btn-strategy-save">保存策略</button>
+          <button class="btn btn-ghost" id="btn-strategy-cancel">取消</button>
+          <span class="verify-result" id="strategy-form-msg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 知识库弹窗 -->
+<div class="modal" id="kb-modal" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2>知识库</h2>
+      <button class="modal-close" data-close="kb-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        导入你自己的选股资料（策略、规则、经验、术语说明）。助手回答这类问题时，
+        会先检索知识库，<strong>并且必须标出引用的是哪一段</strong>。
+        <br>
+        <span class="kb-warn">知识库为空时，助手不会给出任何建议性内容</span>——这是为了保证它不乱说。
+      </p>
+
+      <div class="field-row kb-actions">
+        <button class="btn btn-primary" id="btn-kb-import">导入文档</button>
+        <button class="btn btn-ghost" id="btn-kb-clear">全部清空</button>
+        <input type="file" id="kb-file" multiple hidden
+               accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.docx">
+        <span class="kb-hint">支持 .txt / .md / .csv / .json / .docx</span>
+      </div>
+
+      <div class="kb-stats" id="kb-stats"></div>
+      <div class="kb-list" id="kb-list"></div>
+
+      <details class="kb-test">
+        <summary>检索测试（看看你的问题能命中哪一段）</summary>
+        <div class="field-row" style="margin-top:10px">
+          <input type="text" id="kb-query" placeholder="输入一个问题，例如：量比多少算放量">
+          <button class="btn btn-ghost" id="btn-kb-search">检索</button>
+        </div>
+        <div id="kb-search-result"></div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- 用量明细弹窗 -->
+<div class="modal" id="usage-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>用量与费用</h2>
+      <button class="modal-close" data-close="usage-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="balance-box" id="usage-balance-box">查询中…</div>
+      <div class="usage-grid" id="usage-grid"></div>
+      <div class="usage-models" id="usage-models"></div>
+      <p class="modal-desc" id="usage-note"></p>
+      <div class="field-row">
+        <button class="btn btn-ghost" id="btn-refresh-usage">刷新余额</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- K线弹窗 -->
+<div class="modal" id="kline-modal" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2 id="kline-title">日线走势</h2>
+      <button class="modal-close" data-close="kline-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="kline-legend">
+        <span class="lg ma5">MA5</span>
+        <span class="lg ma10">MA10</span>
+        <span class="lg ma20">MA20</span>
+      </div>
+      <canvas id="kline-canvas" width="900" height="460"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
